@@ -4,7 +4,7 @@
 https://cloud.google.com/sdk/docs/cheatsheet
 
 
-## to provision. Source file is main.py by default
+## to provision cd to folder with function script (should be called main.py) and requirements.txt
 gcloud functions deploy hello_http \
     --runtime python39 \
     --trigger-http \
@@ -22,6 +22,104 @@ https://europe-west2-volatility-portfolio-bot.cloudfunctions.net/hello_http?name
 
 
 
+# another example of provisioning a cloud func to buy in binance. 
+# 'quiet' parameter stops it asking if you're sure you only want to allow authenticated if you havent specified that
+# ingress-settings=internal-only means function is only callable within that project (or VPC)
+# set-secrets isnt tested: should allow the function to access a specific secret, loading it with google.cloud.secretmanager
+gcloud functions deploy execute_trade \
+    --runtime python39 \
+    --trigger-http \
+    --region=europe-west2 \
+    --memory=128MB \
+    --timeout=120S \
+    --quiet \
+    --allow-unauthenticated \
+    --ingress-settings=internal-only \
+
+
+
+
+
+### Provisioning a 2nd cloud function, specifying the secrets which can be used
+For this to work make sure the service account the cloud function uses has "Secret Manager Secret Accessor" Permissions 
+for the secret being called
+
+The below gives 's1' as an obj with the binance keys, tho calling get_secrets() and having s1 appears redundant. This func just uses get_secrets()
+
+gcloud functions deploy execute_trade2 \
+    --runtime python39 \
+    --trigger-http \
+    --region=europe-west2 \
+    --memory=128MB \
+    --timeout=120S \
+    --quiet \
+    --allow-unauthenticated \
+    --ingress-settings=internal-only \
+    --set-secrets s1=binance-keys:latest
+
+# to execute the function deployed here
+gcloud functions call execute_trade2 --data '{"price":"18","quantity":"1","symbol":"DOTUSDT"}' --region=europe-west2
+
+
+
+# provision a function, setting the directory which contains main.py and requirements.txt
+gcloud functions deploy sell_binance \
+    --runtime python39 \
+    --trigger-http \
+    --region=europe-west2 \
+    --memory=128MB \
+    --timeout=120S \
+    --quiet \
+    --allow-unauthenticated \
+    --ingress-settings=internal-only \
+    --set-secrets s1=binance-keys:latest \
+    --source /home/adam_bricknell/binance_sell_function
+
+
+
+
+## On accessing secrets in Cloud Functions 
+To make secret available to a function: https://cloud.google.com/functions/docs/configuring/secrets
+
+To practice the principle of least privilege, it's recommended that each Cloud Function be deployed as a 
+dedicated service account. 
+You need to grant that service account access to the secrets your application requires.
+
+
+
+
+
+
+# On triggering Cloud functions which require authentication
+Can do this with gcloud just fine, eg:
+gcloud functions call execute_trade2 --data '{"price":"18","quantity":"1","symbol":"DOTUSDT"}' --region=europe-west2
+
+To do this in python:
+
+from google.oauth2 import service_account
+from google.auth.transport.requests import AuthorizedSession
+
+url = 'https://europe-west2-volatility-portfolio-bot.cloudfunctions.net/execute_trade?price=18&quantity=0.5&symbol=DOTUSDT'
+
+creds = service_account.IDTokenCredentials.from_service_account_file(
+       '/path/to/service-account-credentials.json', target_audience=url)
+
+authed_session = AuthorizedSession(creds)
+
+# make authenticated request and print the response, status_code
+resp = authed_session.get(url)
+print(resp.status_code)
+print(resp.text)
+
+
+
+
+
+
+
+
+
+### Automating scheduling
 Cloud scheduler CLI is in beta: https://cloud.google.com/sdk/gcloud/reference/beta/scheduler
 Example of its use: 
 gcloud beta scheduler jobs create pubsub startup-dev-instances \
