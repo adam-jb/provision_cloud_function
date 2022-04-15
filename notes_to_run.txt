@@ -1,0 +1,35 @@
+
+
+## gcloud cli cheatsheet
+https://cloud.google.com/sdk/docs/cheatsheet
+
+
+## to provision. Source file is main.py by default
+gcloud functions deploy hello_http \
+    --runtime python39 \
+    --trigger-http \
+    --region=europe-west2 \
+    --memory=256MB \
+    --timeout=120S
+
+
+## on formatting of datetimes in gcloud: https://cloud.google.com/sdk/gcloud/reference/topic/datetimes
+
+
+# URL seems to be same whether or not you add --allow-unauthenticated param when provisioning:
+https://europe-west2-volatility-portfolio-bot.cloudfunctions.net/hello_http?name=Adam&age=31
+
+
+
+
+Cloud scheduler CLI is in beta: https://cloud.google.com/sdk/gcloud/reference/beta/scheduler
+Example of its use: 
+gcloud beta scheduler jobs create pubsub startup-dev-instances \
+  --schedule '0 9 * * 1-5' \
+  --topic start-instance-event \
+  --message-body '{"zone":"us-west1-b", "label":"env=dev"}' \
+  --time-zone 'Asia/Taipei'
+
+
+
+
